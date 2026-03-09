@@ -118,12 +118,12 @@ const Index = () => {
                     <ArrowRight className="ml-2" size={20} />
                   </a>
                 </Button>
-                <Button variant="hero-outline" size="xl" asChild>
+                {/* <Button variant="hero-outline" size="xl" asChild>
                   <Link to="/courses">
                     <Play className="mr-2" size={20} />
                     Explore Courses
                   </Link>
-                </Button>
+                </Button> */}
               </motion.div>
             </motion.div>
           </div>
@@ -245,7 +245,7 @@ const Index = () => {
                 pause, rewind, and practice at your own pace.
               </p>
               <ul className="space-y-3">
-                {["Unlimited replays", "Curated playlists", "Progress tracking", "Yogic points"].map((item, i) => (
+                {["Unlimited LIVE Sessions", "Curated playlists", "1-1 Yoga therapy couns" , "Progress tracking", "Yogic points"].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-sm">
                     <Sparkles className="w-4 h-4 text-primary" />
                     {item}

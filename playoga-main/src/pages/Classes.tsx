@@ -20,14 +20,16 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 /* ================= ANIMATIONS ================= */
 
+/* ================= ANIMATIONS ================= */
+
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0 },
 };
 
 const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1 } },
 };
 
 /* ================= TYPES ================= */
@@ -39,8 +41,9 @@ interface LiveSession {
   scheduled_at: string;
   duration_minutes: number;
   thumbnail_url: string | null;
-  is_live: boolean | null;
-  is_premium: boolean | null;
+  instructor_name: string;
+  stream_url: string;
+  is_completed: boolean;
 }
 
 /* ================= HELPERS ================= */
@@ -64,11 +67,166 @@ const formatTime = (dateStr: string) =>
     hour12: true,
   });
 
-const isLiveNow = (start: string, duration: number) => {
+const getSessionStatus = (
+  start: string,
+  duration: number,
+  completed: boolean
+) => {
+  if (completed) return "completed";
+
   const startTime = new Date(start).getTime();
-  const endTime = startTime + duration * 60 * 1000;
+  const endTime = startTime + duration * 60000;
   const now = Date.now();
-  return now >= startTime && now <= endTime;
+
+  if (now >= startTime && now <= endTime) return "live";
+  if (now < startTime) return "upcoming";
+
+  return "completed";
+};
+
+const getCountdown = (start: string) => {
+  const diff = new Date(start).getTime() - Date.now();
+
+  if (diff <= 0) return null;
+
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+  return `${hours}h ${minutes}m`;
+};
+
+/* ================= CARD COMPONENT ================= */
+
+const SessionCard = ({ cls }: { cls: LiveSession }) => {
+  const status = getSessionStatus(
+    cls.scheduled_at,
+    cls.duration_minutes,
+    cls.is_completed
+  );
+
+  const countdown = getCountdown(cls.scheduled_at);
+
+  return (
+    <motion.div
+      variants={fadeInUp}
+      className="group bg-card border rounded-3xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col lg:flex-row"
+    >
+      {/* Thumbnail */}
+
+      <div className="relative w-full lg:w-80 h-56 lg:h-auto overflow-hidden">
+
+        <img
+          src={
+            cls.thumbnail_url ||
+            "https://images.unsplash.com/photo-1554344058-2d5a5a8c0f65"
+          }
+          className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+        />
+
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+
+        {status === "live" && (
+          <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full text-xs flex items-center gap-2 animate-pulse">
+            <Circle size={8} fill="currentColor" />
+            LIVE NOW
+          </div>
+        )}
+
+        {status === "upcoming" && (
+          <div className="absolute top-4 left-4 bg-yellow-400 text-black px-3 py-1 rounded-full text-xs font-semibold">
+            UPCOMING
+          </div>
+        )}
+
+        {status === "completed" && (
+          <div className="absolute top-4 left-4 bg-gray-700 text-white px-3 py-1 rounded-full text-xs">
+            COMPLETED
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+
+      <div className="flex flex-col justify-between p-6 lg:p-8 flex-grow">
+
+        <div>
+
+          <p className="text-sm text-primary font-medium mb-1">
+            {formatDate(cls.scheduled_at)} • {formatTime(cls.scheduled_at)}
+          </p>
+
+          <h3 className="text-xl lg:text-2xl font-semibold mb-2">
+            {cls.title}
+          </h3>
+
+          <p className="text-sm text-muted-foreground mb-2">
+            Instructor:{" "}
+            <span className="font-medium">{cls.instructor_name}</span>
+          </p>
+
+          <p className="text-muted-foreground text-sm mb-5 line-clamp-2">
+            {cls.description}
+          </p>
+
+          <div className="flex flex-wrap gap-5 text-sm text-muted-foreground">
+
+            <span className="flex items-center gap-1">
+              <Clock size={16} />
+              {cls.duration_minutes} min
+            </span>
+
+            <span className="flex items-center gap-1">
+              <Flame size={16} />
+              Energy burn
+            </span>
+
+            <span className="flex items-center gap-1">
+              <Activity size={16} />
+              Full body
+            </span>
+
+          </div>
+
+          {status === "upcoming" && countdown && (
+            <div className="mt-3 text-sm text-yellow-600 font-medium">
+              Starts in {countdown}
+            </div>
+          )}
+
+        </div>
+
+        {/* Action */}
+
+        <div className="mt-6">
+
+          {status === "live" && (
+            <Button
+              className="bg-red-600 hover:bg-red-700 w-full sm:w-auto"
+              asChild
+            >
+              <a href={cls.stream_url} target="_blank">
+                Join Live Class
+              </a>
+            </Button>
+          )}
+
+          {status === "upcoming" && (
+            <Button variant="outline" className="w-full sm:w-auto">
+              Upcoming Session
+            </Button>
+          )}
+
+          {status === "completed" && (
+            <Button disabled className="w-full sm:w-auto">
+              Session Completed
+            </Button>
+          )}
+
+        </div>
+
+      </div>
+    </motion.div>
+  );
 };
 
 /* ================= COMPONENT ================= */
@@ -80,16 +238,15 @@ export default function Classes() {
 
   useEffect(() => {
     const fetchSessions = async () => {
-      setProgress(10);
 
       const timer = setInterval(
-        () => setProgress((p) => Math.min(p + 15, 85)),
+        () => setProgress((p) => Math.min(p + 10, 90)),
         200
       );
 
       try {
         const res = await fetch(
-          `${SUPABASE_URL}/rest/v1/live_sessions?select=*&order=scheduled_at.asc`,
+          `${SUPABASE_URL}/rest/v1/live_sessions?select=*`,
           {
             headers: {
               apikey: SUPABASE_ANON_KEY,
@@ -98,12 +255,11 @@ export default function Classes() {
           }
         );
 
-        if (!res.ok) throw new Error("Failed to fetch sessions");
-
         const data: LiveSession[] = await res.json();
+
         setClasses(data);
       } catch (err) {
-        console.error("Error loading live sessions", err);
+        console.error(err);
       } finally {
         clearInterval(timer);
         setProgress(100);
@@ -114,133 +270,131 @@ export default function Classes() {
     fetchSessions();
   }, []);
 
+  /* Categorize sessions */
+
+  const live = classes.filter(
+    (c) =>
+      getSessionStatus(c.scheduled_at, c.duration_minutes, c.is_completed) ===
+      "live"
+  );
+
+  const upcoming = classes.filter(
+    (c) =>
+      getSessionStatus(c.scheduled_at, c.duration_minutes, c.is_completed) ===
+      "upcoming"
+  );
+
+  const completed = classes.filter(
+    (c) =>
+      getSessionStatus(c.scheduled_at, c.duration_minutes, c.is_completed) ===
+      "completed"
+  );
+
   return (
     <Layout>
+
       {/* HERO */}
-      <section className="pt-20 pb-12 text-center">
-        <motion.h1
-          initial="hidden"
-          animate="visible"
-          variants={fadeInUp}
-          className="text-4xl md:text-5xl font-serif font-bold"
-        >
-          Upcoming <span className="text-gradient-gold">Live Classes</span>
-        </motion.h1>
-        <p className="text-muted-foreground mt-4">
-          Practice live with expert guidance and community energy
+
+      <section className="pt-24 pb-14 text-center px-4">
+        <h1 className="text-4xl md:text-5xl font-bold">
+          Yoga <span className="text-gradient-gold">Live Classes</span>
+        </h1>
+
+        <p className="text-muted-foreground mt-4 max-w-xl mx-auto">
+          Join expert-led live yoga sessions and practice from anywhere.
         </p>
       </section>
 
       {/* CONTENT */}
-      <section className="py-16 container mx-auto px-4">
+
+      <section className="pb-24 container mx-auto px-4">
+
         {loading ? (
           <div className="text-center py-20">
-            <Loader2 className="mx-auto animate-spin mb-4" />
+            <Loader2 className="animate-spin mx-auto mb-4" />
             <Progress value={progress} className="max-w-md mx-auto" />
-          </div>
-        ) : classes.length === 0 ? (
-          <div className="text-center py-20">
-            <Calendar className="mx-auto mb-4 opacity-40" size={48} />
-            <p className="text-muted-foreground">
-              No upcoming live classes yet
-            </p>
           </div>
         ) : (
           <motion.div
             initial="hidden"
             animate="visible"
             variants={staggerContainer}
-            className="space-y-4 max-w-4xl mx-auto"
+            className="space-y-14 max-w-6xl mx-auto"
           >
-            {classes.map((cls) => {
-              const live = isLiveNow(
-                cls.scheduled_at,
-                cls.duration_minutes
-              );
 
-              return (
-                <motion.div
-                  key={cls.id}
-                  variants={fadeInUp}
-                  className="bg-card rounded-2xl overflow-hidden shadow-soft border flex flex-col md:flex-row"
-                >
-                  <div className="relative md:w-48 h-32 md:h-auto">
-                    <img
-                      src={
-                        cls.thumbnail_url ||
-                        "https://images.unsplash.com/photo-1554344058-2d5a5a8c0f65"
-                      }
-                      className="w-full h-full object-cover"
-                    />
-                    {live && (
-                      <div className="absolute top-2 left-2 bg-destructive text-white px-2 py-1 rounded text-xs flex items-center gap-1">
-                        <Circle size={8} fill="currentColor" /> LIVE
-                      </div>
-                    )}
-                  </div>
+            {/* LIVE */}
 
-                  <div className="p-6 flex-grow">
-                    <p className="text-sm text-primary font-medium mb-1">
-                      {formatDate(cls.scheduled_at)} •{" "}
-                      {formatTime(cls.scheduled_at)}
-                    </p>
+            {live.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold text-red-600 mb-6">
+                  🔴 Live Now
+                </h2>
 
-                    <h3 className="text-xl font-serif font-semibold mb-1">
-                      {cls.title}
-                    </h3>
+                <div className="space-y-8">
+                  {live.map((cls) => (
+                    <SessionCard key={cls.id} cls={cls} />
+                  ))}
+                </div>
+              </div>
+            )}
 
-                    <p className="text-muted-foreground text-sm mb-3">
-                      {cls.description}
-                    </p>
+            {/* UPCOMING */}
 
-                    <div className="flex gap-4 text-sm text-muted-foreground mb-4">
-                      <span className="flex items-center gap-1">
-                        <Clock size={14} /> {cls.duration_minutes} min
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Flame size={14} /> Live energy burn
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Activity size={14} /> Full body focus
-                      </span>
-                    </div>
+            {upcoming.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold mb-6">
+                  Upcoming Classes
+                </h2>
 
-                    <Button variant={live ? "gold" : "outline"} asChild>
-                      <a
-                        href="https://app.playoga.co.in"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {live ? "Join Now" : "Book Spot"}
-                      </a>
-                    </Button>
-                  </div>
-                </motion.div>
-              );
-            })}
+                <div className="space-y-8">
+                  {upcoming.map((cls) => (
+                    <SessionCard key={cls.id} cls={cls} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* COMPLETED */}
+
+            {completed.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold text-muted-foreground mb-6">
+                  Past Sessions
+                </h2>
+
+                <div className="space-y-8 opacity-80">
+                  {completed.map((cls) => (
+                    <SessionCard key={cls.id} cls={cls} />
+                  ))}
+                </div>
+              </div>
+            )}
+
           </motion.div>
         )}
+
       </section>
 
       {/* CTA */}
-      <section className="py-24 text-center">
-        <h2 className="text-3xl md:text-4xl font-serif font-bold mb-6">
-          Never Miss a <span className="text-gradient-gold">Session</span>
+
+      <section className="py-24 text-center px-4">
+        <h2 className="text-3xl md:text-4xl font-bold mb-6">
+          Never Miss a{" "}
+          <span className="text-gradient-gold">Session</span>
         </h2>
-        <p className="text-muted-foreground text-lg mb-8">
-          Unlock all live classes + full video library with Playoga Premium
+
+        <p className="text-muted-foreground mb-8">
+          Unlock unlimited classes and full yoga library with Playoga Premium.
         </p>
-        <Button variant="hero" size="xl" asChild>
-          <a
-            href="https://app.playoga.co.in"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+
+        <Button size="xl" variant="hero" asChild>
+          <a href="https://app.playoga.co.in" target="_blank">
             Get All-Access — ₹999/year
-            <ArrowRight className="ml-2" size={20} />
+            <ArrowRight className="ml-2" size={18} />
           </a>
         </Button>
       </section>
+
     </Layout>
   );
 }

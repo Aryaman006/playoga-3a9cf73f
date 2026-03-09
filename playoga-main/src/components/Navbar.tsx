@@ -8,10 +8,10 @@ import Logo from "./Logo";
 const navLinks = [
   { name: "Home", path: "/" },
   { name: "About", path: "/about" },
-  { name: "Courses", path: "/courses" },
+  // { name: "Courses", path: "/courses" },
   { name: "Upcoming Classes", path: "/classes" },
   { name: "Pricing", path: "/pricing" },
-  { name: "Blog", path: "https://www.blog.playoga.co.in", external: true },
+  { name: "Blog", path: "https://blog.playoga.co.in/blog", external: true },
 ];
 
 const Navbar = () => {
