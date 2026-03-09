@@ -7,9 +7,9 @@ import Logo from "./Logo";
 
 const navLinks = [
   { name: "Home", path: "/" },
-  { name: "About", path: "/about" },
-  // { name: "Courses", path: "/courses" },
   { name: "Upcoming Classes", path: "/classes" },
+  { name: "Courses", path: "/courses" },
+  { name: "About", path: "/about" },
   { name: "Pricing", path: "/pricing" },
   { name: "Blog", path: "https://blog.playoga.co.in/blog", external: true },
 ];
