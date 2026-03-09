@@ -4,11 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --config playoga-main/vite.config.ts",
-    "build": "vite build --config playoga-main/vite.config.ts",
-    "build:dev": "vite build --mode development --config playoga-main/vite.config.ts",
+    "dev": "npx vite --config playoga-main/vite.config.ts",
+    "build": "npx vite build --config playoga-main/vite.config.ts",
     "lint": "eslint .",
-    "preview": "vite preview --config playoga-main/vite.config.ts",
+    "preview": "npx vite preview --config playoga-main/vite.config.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
