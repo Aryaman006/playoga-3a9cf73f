@@ -1,0 +1,8 @@
+{
+  "name": "playoga-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "cd playoga-main && npx vite",
+    "build": "cd playoga-main && npx vite build"
+  }
+}
